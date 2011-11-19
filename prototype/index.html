@@ -1,0 +1,449 @@
+<!DOCTYPE HTML>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title></title>
+    <script src='js/underscore.js'></script>
+    <script src='js/abacus.js'></script>
+
+
+    <style>
+      #container {
+
+        position:absolute;
+        left:10px;
+        top:10px;
+        bottom:10px;
+        right:10px;
+        border:1px solid red;
+      }
+
+    </style>
+
+  </head>
+  <body>
+
+
+<div id='container'>
+<canvas id='game' width='500' height='500' style='background-color:black;'></canvas>
+</div>
+
+<script>
+
+  Pixl = {};
+
+
+  
+
+  var ctx = document.getElementById("game").getContext('2d');  
+
+
+  function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
+    if (typeof stroke == "undefined" ) {
+      stroke = true;
+    }
+    if (typeof radius === "undefined") {
+      radius = 5;
+    }
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    if (stroke) {
+      ctx.stroke();
+    }
+    if (fill) {
+      ctx.fill();
+    }        
+  }
+
+  Pixl.ctx = ctx;
+
+  /* Block */
+
+
+
+  Pixl.Block = function(options) {
+    _(this).extend({corners: 10, z: 1,
+                    w: 50, h: 50,
+                    ang: 0, 
+                    color:"white",
+                    moving:0, vx: .5, vy: .5, movingLength: 10, moveAng:0,
+                    jumping: 0, jumpingLength: 30,
+                    dx: 0, dy: 0,
+                  },options);
+    return this;
+  };
+
+
+  Pixl.Block.prototype.mover = [ 0.8,
+                                0.9,
+                                1.0,
+                                1.0,
+                                1.0,
+                                1.0,
+                                1.0,
+                                1.0,
+                                0.9,
+                                0.8,
+                                0.8 ];
+
+  Pixl.Block.prototype.angMover = [ 0.0,
+                                 2.0, 
+                                 4.0, 
+                                 6.0, 
+                                 8.0, 
+                                 9.0, 
+                                 8.0, 
+                                 6.0, 
+                                 4.0, 
+                                 2.0, 
+                                 0.0
+                                ];
+
+
+  Pixl.Block.prototype.jumpMover = [ 
+                                 1.0,
+                                 1.2, 
+                                 1.4, 
+                                 1.6, 
+                                 1.8, 
+                                 2.0, 
+                                 1.8, 
+                                 1.6, 
+                                 1.4, 
+                                 1.2, 
+                                 1.0
+                                ];
+
+
+  Pixl.Block.prototype.render = function() {
+    if(!this.predrawn) { this.predraw(); }
+
+    Pixl.ctx.save();
+    Pixl.ctx.translate(this.x,this.y);
+
+    Pixl.ctx.translate(this.w/2,this.h/2);
+    Pixl.ctx.rotate(this.ang * Math.PI / 180);
+    Pixl.ctx.scale(this.z,this.z);
+    Pixl.ctx.translate(-this.w/2,-this.h/2);
+    Pixl.ctx.drawImage(this.buffer,0,0);
+    Pixl.ctx.restore();
+  }
+
+  Pixl.Block.prototype.draw = function(ctx) {
+    ctx.fillStyle = this.color;
+    roundRect(ctx,0,0,this.w,this.h,this.corners,true);
+  }
+
+
+  Pixl.Block.prototype.predraw = function() {
+    this.buffer = document.createElement('canvas');
+    this.buffer.width = this.w;
+    this.buffer.height = this.h;
+    this.draw(this.buffer.getContext('2d'));
+    this.predrawn = true;
+  }
+
+
+  Pixl.Block.prototype.move = function(dx,dy) {
+    if((!this.moving && (dx || dy))  ||
+       (this.moving && (dx || dy) && (this.dx != dx || this.dy != dy))) {
+      this.dx = dx;
+      this.dy = dy;
+      this.moving = this.movingLength;
+    }
+
+  }
+
+  Pixl.Block.prototype.jump= function() {
+    if(!this.jumping) {
+      this.jumping = this.jumpingLength;
+    }
+
+  }
+
+  Pixl.Block.prototype.update = function(dt) {
+    if(this.moving > 0) {
+      this.moveAng++;
+      this.moving--;
+
+      var m = this.mover[this.movingLength- this.moving];
+      this.ang = (this.dx + this.dy > 0 ? -1 : 1) * this.angMover[Math.floor((this.moveAng/3) % (this.angMover.length + 1))];
+      this.x += dt * this.dx * this.vx * m;
+      this.y += dt * this.dy * this.vy * m;
+    } else {
+    this.moveAng = 0;
+      this.ang =0;
+    }
+
+    if(this.jumping > 0) {
+      this.z = 1 + Math.sin( (this.jumpingLength - this.jumping) * Math.PI / this.jumpingLength);
+      
+      //this.jumpMover[Math.floor((this.jumpingLength - this.jumping)/this.jumpingLength*this.jumpMover.length)];
+      this.jumping--;
+    }
+
+  }
+
+  /* Screen */
+  Pixl.Screen = function() {
+    this.blocks = [];
+    this.x = 0;
+    this.y = 0;
+    this.z= 0.5;
+  }
+
+  Pixl.Screen.prototype.add = function(blck) {
+    this.blocks.push(blck);
+    return blck;
+  }
+
+  Pixl.Screen.prototype.render = function() {
+    if(this.resized) {
+      this.resized = false;
+      Pixl.ctx.canvas.width = this.clientW;
+      Pixl.ctx.canvas.height = this.clientH;
+    }
+
+    ctx.save();
+    ctx.scale(this.z,this.z);
+    ctx.translate(this.x,this.y);
+    for(var i = 0, len = this.blocks.length;i<len;i++) {
+      this.blocks[i].render();
+    }
+    ctx.restore();
+  }
+
+  Pixl.Screen.prototype.zoom = function(dest) {
+    this.z = dest;
+    this.zooming = true;
+  }
+
+
+  Pixl.Screen.prototype.update = function(dt) {
+    for(var i = 0, len = this.blocks.length;i<len;i++) {
+      this.blocks[i].update(dt);
+    }
+  }
+
+
+
+  Pixl.Screen.prototype.setPosition = function(x,y) {
+    this.x = x;
+    this.y = y;
+  }
+
+
+  Pixl.Screen.prototype.setDimensions = function(clientW,clientH) {
+    this.clientW = clientW;
+    this.clientH = clientH;
+
+    this.resized = true;
+  }
+
+  Pixl.Screen.prototype.clear = function() {
+    Pixl.ctx.clearRect(0,0,this.clientW,this.clientH);
+  }
+
+  Pixl.Screen.prototype.follow = function(block) {
+    var destX = -block.x - block.w / 2 + this.clientW / this.z/ 2;
+    var destY =  -block.y - block.h / 2 + this.clientH / this.z / 2;
+
+    if(this.zooming) {
+      this.setPosition(destX,destY);
+      this.zooming = false;
+    } else {
+      this.setPosition((destX - this.x)/3 + this.x, (destY - this.y)/3 + this.y);
+    }
+  }
+
+
+  /* Canvs */
+  Pixl.Canvas = function(ctx) {
+    this.ctx = ctx;
+  }
+
+
+  Pixl.Canvas.prototype.clear = function() {
+
+  }
+
+
+  screen = new Pixl.Screen();
+  screen.add(new Pixl.Block({ x:200,y:150 }));
+  screen.add(new Pixl.Block({ x:800,y:150 }));
+  var player = screen.add(new Pixl.Block({ x:10,y:300, color: '#009900' }));
+
+
+  Pixl.loop = Abacus.timer({
+    callback: function( data ) {
+
+      var dx = 0,dy = 0;
+      if(Pixl.key('RIGHT_ARROW')) { dx++; } 
+      if(Pixl.key('LEFT_ARROW')) { dx--; }
+      if(Pixl.key('UP_ARROW')) { dy--; }
+      if(Pixl.key('DOWN_ARROW')) { dy++; }
+
+      if(Pixl.key("SPACE")) { player.jump(); }
+      if(Pixl.key("Z")) { screen.zoom(screen.z*1.1); }
+      if(Pixl.key("A")) { screen.zoom(screen.z*0.9); }
+
+      player.move(dx,dy);
+
+      screen.update(data.delta);
+
+      screen.clear();
+      screen.follow(player);
+
+      screen.render();
+      // data.delta // time since the last tick
+      // data.ticks // zero indexed number of ticks
+    }
+  });
+
+  // Start the timer with an optional kill time in miliseconds
+  // if no miliseconds are passed in, it wil run FOR EV AR, until you pause it
+  Pixl.loop.start();
+
+
+// Reflow handling
+var reflow = function() {
+	var clientWidth = container.clientWidth;
+	var clientHeight = container.clientHeight;
+	screen.setDimensions(clientWidth, clientHeight);
+};
+
+window.addEventListener("resize", reflow, false);
+reflow();
+  
+
+// Input
+
+(function(Pixl,window) {
+  var input = Pixl.input = {};
+  input.keys = {};
+
+  input.keyboard =  function(e) {
+    e.key = e.KeyCode || e.which;
+    if(e.type === "keydown") {
+      input.keys[e.key] = true;
+      } else if(e.type == "keyup") {
+      input.keys[e.key] = false;
+    }
+  }
+
+  Pixl.key = input.key = function(key) {
+    return input.keys[input.keyCodes[key]];
+  };
+
+  // Stolen from Crafty
+  input.keyCodes = {
+    'BACKSPACE': 8,
+    'TAB': 9,
+    'ENTER': 13,
+    'PAUSE': 19,
+    'CAPS': 20,
+    'ESC': 27,
+    'SPACE': 32,
+    'PAGE_UP': 33,
+    'PAGE_DOWN': 34,
+    'END': 35,
+    'HOME': 36,
+    'LEFT_ARROW': 37,
+    'UP_ARROW': 38,
+    'RIGHT_ARROW': 39,
+    'DOWN_ARROW': 40,
+    'INSERT': 45,
+    'DELETE': 46,
+    '0': 48,
+    '1': 49,
+    '2': 50,
+    '3': 51,
+    '4': 52,
+    '5': 53,
+    '6': 54,
+    '7': 55,
+    '8': 56,
+    '9': 57,
+    'A': 65,
+    'B': 66,
+    'C': 67,
+    'D': 68,
+    'E': 69,
+    'F': 70,
+    'G': 71,
+    'H': 72,
+    'I': 73,
+    'J': 74,
+    'K': 75,
+    'L': 76,
+    'M': 77,
+    'N': 78,
+    'O': 79,
+    'P': 80,
+    'Q': 81,
+    'R': 82,
+    'S': 83,
+    'T': 84,
+    'U': 85,
+    'V': 86,
+    'W': 87,
+    'X': 88,
+    'Y': 89,
+    'Z': 90,
+    'NUMPAD_0': 96,
+    'NUMPAD_1': 97,
+    'NUMPAD_2': 98,
+    'NUMPAD_3': 99,
+    'NUMPAD_4': 100,
+    'NUMPAD_5': 101,
+    'NUMPAD_6': 102,
+    'NUMPAD_7': 103,
+    'NUMPAD_8': 104,
+    'NUMPAD_9': 105,
+    'MULTIPLY': 106,
+    'ADD': 107,
+    'SUBSTRACT': 109,
+    'DECIMAL': 110,
+    'DIVIDE': 111,
+    'F1': 112,
+    'F2': 113,
+    'F3': 114,
+    'F4': 115,
+    'F5': 116,
+    'F6': 117,
+    'F7': 118,
+    'F8': 119,
+    'F9': 120,
+    'F10': 121,
+    'F11': 122,
+    'F12': 123,
+    'SHIFT': 16,
+    'CTRL': 17,
+    'ALT': 18,
+    'PLUS': 187,
+    'COMMA': 188,
+    'MINUS': 189,
+    'PERIOD': 190 
+  };
+
+  window.addEventListener("keydown",input.keyboard);
+  window.addEventListener("keyup",input.keyboard);
+
+
+})(Pixl,window);
+
+
+
+</script>
+
+  </body>
+</html>

@@ -1,0 +1,79 @@
+<!DOCTYPE HTML>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title></title>
+
+    <script src="/socket.io/socket.io.js"></script>
+
+    <script src='js/support/underscore.js'></script>
+    <script src='js/support/abacus.js'></script>
+
+    <script>module = {};
+      var requires = {
+        'underscore': _
+      }
+      function require(str) {
+        return requires[str];
+      }
+    
+    </script>
+
+    <script src='js/engine/pixl.js'></script>
+    <script>
+      Pixl.client = true;
+
+    </script>
+    <script src='js/engine/block.js'></script>
+    <script src='js/engine/screen.js'></script>
+    <script src='js/client/input.js'></script>
+    <script src='js/client/graphics.js'></script>
+
+    <script src='js/client/game.js'></script>
+
+
+    <style>
+      #container {
+
+        position:absolute;
+        left:10px;
+        top:10px;
+        bottom:10px;
+        right:10px;
+        border:1px solid red;
+      }
+
+    </style>
+  </head>
+  <body>
+
+
+<div id='container'>
+<canvas id='game' width='500' height='500' style='background-color:black;'></canvas>
+</div>
+
+<script>
+
+
+window.addEventListener('load',function() {
+  var ctx = document.getElementById("game").getContext('2d');  
+  Pixl.ctx = ctx;
+ 
+  Pixl.socket = io.connect();
+  Pixl.socket.on("start",function(data) {
+    Pixl.scene(data);
+    Pixl.startGame();
+  });
+
+  Pixl.socket.on('step',function(data) {
+    Pixl.game.step(data);
+  });
+
+});
+
+
+</script>
+
+  </body>
+</html>
+
