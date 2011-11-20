@@ -1,5 +1,32 @@
 (function( window ) {
 
+
+  if (!Function.prototype.bind) {
+    Function.prototype.bind = function (oThis) {
+      if (typeof this !== "function") {
+        // closest thing possible to the ECMAScript 5 internal IsCallable function
+        throw new TypeError("Function.prototype.bind - what is trying to be bound is not callable");
+      }
+
+      var fSlice = Array.prototype.slice,
+      aArgs = fSlice.call(arguments, 1), 
+      fToBind = this, 
+      fNOP = function () {},
+      fBound = function () {
+        return fToBind.apply(this instanceof fNOP
+        ? this
+        : oThis || window,
+        aArgs.concat(fSlice.call(arguments)));
+      };
+
+      fNOP.prototype = this.prototype;
+      fBound.prototype = new fNOP();
+
+      return fBound;
+    };
+  }
+
+
   // Declare initial Abacus object
   // this file should always load first
   var Abacus = {},
@@ -179,7 +206,7 @@
     };
 
     // Define own property loop() function closure
-    this.loop = function() {
+    this.loop = (function() {
       var now = Date.now();
 
       this.timing.delta = now - this.lastTick;
@@ -209,15 +236,15 @@
         this.timing.ticks++;
       }
 
-    }.bind( this );
+    }).bind( this );
 
 
     // Define own property stop() function closure
-    this.stop = function() {
+    this.stop = (function() {
 
       callbackQueue.splice( callbackQueue.indexOf( this.loop || Abacus.noop ), 1 );
 
-    }.bind( this );
+    }).bind( this );
 
     return this;
   }

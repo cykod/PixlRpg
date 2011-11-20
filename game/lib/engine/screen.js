@@ -3,8 +3,21 @@
 
   /* Screen */
   var Screen = function(ctx) {
+    this.w = 100;
+    this.h = 100;
+
     this.ctx = ctx;
     this.blocks = [];
+    this.tiles = [];
+
+    _(_.range(this.h)).each(function(y) {
+      var row = [];
+      _(_.range(this.w)).each(function(x) {
+        row.push(0);
+      },this);
+      this.tiles.push(row);
+    },this);
+
     this.x = 0;
     this.y = 0;
     this.z= 0.5;
@@ -17,6 +30,10 @@
     return blck;
   }
 
+  Screen.prototype.setTile = function(x,y,tile) {
+    this.tiles[y][x] = tile;
+  }
+
   Screen.prototype.render = function() {
     if(this.resized) {
       this.resized = false;
@@ -27,6 +44,20 @@
     this.ctx.save();
     this.ctx.scale(this.z,this.z);
     this.ctx.translate(this.x,this.y);
+
+    this.blocks.sort(function(a,b) {
+        return a.v.z - b.v.z;
+    });
+
+    for(var ty=0;ty<this.h;ty++) {
+      for(var tx=0;tx<this.w;tx++) {
+        if(this.tiles[ty][tx]) {
+          this.tiles[ty][tx].render(this.ctx,tx*50,ty*50);
+        }
+
+      }
+    }
+
     for(var i = 0, len = this.blocks.length;i<len;i++) {
       this.blocks[i].render(this.ctx);
     }
@@ -83,7 +114,7 @@
   }
 
   Screen.prototype.step = function(data) {
-    _(data).each(function(v) {
+   _(data).each(function(v) {
       var obj = this.blocksHash[v.id];
       if(!obj) {
         this.add(new Pixl.Block(v));
@@ -91,7 +122,15 @@
         _(obj.v).extend(v);
       }
     },this);
+  };
 
+  Screen.prototype.action = function(v) {
+      var obj = this.blocksHash[v.id];
+      if(!obj) {
+        this.add(new Pixl.Block(v));
+      } else {
+        _(obj.v).extend(v);
+      }
   };
 
   Screen.prototype.remove = function(block) {

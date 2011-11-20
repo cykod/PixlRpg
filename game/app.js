@@ -54,10 +54,12 @@ io.sockets.on('connection', function (socket) {
 
   socket.on('move',function(data) {
     player.move(data.dx,data.dy);
+    io.sockets.emit('action', player.v);
   });
 
   socket.on('jump', function(data) {
     player.jump();
+    io.sockets.emit('action', player.v); 
   });
 
 });

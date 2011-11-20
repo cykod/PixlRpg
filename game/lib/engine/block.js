@@ -7,8 +7,8 @@
                     w: 50, h: 50,
                     ang: 0, 
                     color:"white",
-                    moving:0, vx: .5, vy: .5, movingLength: 10, moveAng:0,
-                    jumping: 0, jumpingLength: 30,
+                    moving:0, vx: .5, vy: .5, movingLength: 300, 
+                    jumping: 0, jumpingLength: 1000, jumpWait: 0,
                     dx: 0, dy: 0,
                   },options);
     if(!this.v.id) { 
@@ -82,8 +82,8 @@
   Block.prototype.move = function(dx,dy) {
     var v = this.v;
 
-    if((!v.moving && (dx || dy))  ||
-       (v.moving && (dx || dy) && (v.dx != dx || v.dy != dy))) {
+    if((v.moving <= 0 && (dx || dy))  ||
+       (v.moving > 0 && (v.dx != dx || v.dy != dy))) {
       if(!server) {
         this.proxy("move", { dx: dx, dy: dy });
         v.dx = dx;
@@ -99,7 +99,7 @@
   Block.prototype.jump= function() {
     var v = this.v;
 
-    if(!v.jumping && !v.jumpWait) {
+    if(v.jumping <= 0 && v.jumpWait <= 0) {
       if(!server) {
         this.proxy("jump", { });
         v.jumpWait = 10;
@@ -119,26 +119,28 @@
     var v = this.v;
 
     if(v.moving > 0) {
-      v.moveAng++;
-      v.moving--;
+      v.moving-=dt;
 
-      var m = this.mover[v.movingLength- v.moving];
-      //v.ang =  * this.angMover[Math.floor((v.moveAng/3) % (this.angMover.length + 1))];
-      v.ang = (v.dx + v.dy > 0 ? -5 : 5) * Math.sin( (v.jumpingLength - v.jumping) * Math.PI / v.jumpingLength);
+     var m =  Math.sin( (v.movingLength - v.moving) * Math.PI / v.movingLength);
+     if(v.jumping > 0) m = 0.5;
+      
+     var angMax = (v.dx || v.dy) ? 7 : 4;
+     if(v.jumping > 0) angMax = 0;
+
+      v.ang = (v.dx + v.dy > 0 ? -angMax : angMax) * Math.sin( 2 * (v.movingLength - v.moving) * Math.PI / v.movingLength);
       v.x += dt * v.dx * v.vx * m;
       v.y += dt * v.dy * v.vy * m;
     } else {
-    v.moveAng = 0;
       v.ang =0;
     }
 
     if(v.jumpWait > 0) {
-      v.jumpWait--;
+      v.jumpWait-=dt;
     }
 
     if(v.jumping > 0) {
       v.z = 1 + Math.sin( (v.jumpingLength - v.jumping) * Math.PI / v.jumpingLength);
-      v.jumping--;
+      v.jumping-=dt;
     }
 
   }

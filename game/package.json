@@ -1,0 +1,12 @@
+{
+  "name": "pixlspace",
+  "description": "Pixlspace game",
+  "author": "Pascal Rettig <pascal@cykod.com>",
+  "version": "0.0.1",
+  "dependencies": {
+    "express": "2.5.1",
+    "socket.io": "0.8.7",
+    "underscore": "1.2.2"
+  },
+  "engine": "node >= 0.4.1"
+}

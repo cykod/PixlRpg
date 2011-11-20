@@ -25,6 +25,7 @@
 
     </script>
     <script src='js/engine/block.js'></script>
+    <script src='js/engine/tile.js'></script>
     <script src='js/engine/screen.js'></script>
     <script src='js/client/input.js'></script>
     <script src='js/client/graphics.js'></script>
@@ -63,10 +64,17 @@ window.addEventListener('load',function() {
   Pixl.socket.on("start",function(data) {
     Pixl.scene(data);
     Pixl.startGame();
+
+    Pixl.game.setTile(25,25,new Pixl.Tile());
   });
 
   Pixl.socket.on('step',function(data) {
     Pixl.game.step(data);
+  });
+
+  Pixl.socket.on('action',function(data) {
+    Pixl.game.action(data);
+
   });
 
 });
